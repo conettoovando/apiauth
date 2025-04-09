@@ -1,0 +1,4 @@
+.ssh/
+.env
+environment/
+__pycache__/
