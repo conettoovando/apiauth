@@ -1,8 +1,8 @@
 # main.py
 from fastapi import FastAPI
 from auth import auth_routes
-import models
-from database import engine
+# import models.user_model as model
+# from database.connection import engine
 
 app = FastAPI()
 
