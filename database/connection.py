@@ -12,5 +12,6 @@ def get_db():
         db.close()
 
 engine = create_engine(URL_DATABASE)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autoflush=True, bind=engine)
+
 Base = declarative_base()
