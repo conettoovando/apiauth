@@ -5,8 +5,8 @@ class User(Base):
     __tablename__="users"
 
     id = Column(CHAR(36), primary_key=True, index=True, server_default=text("UUID()"))
-    username = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
+    username = Column(String(255), index=True)
     password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=False)
     role = Column(String(50), nullable=True)

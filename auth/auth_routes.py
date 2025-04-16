@@ -1,5 +1,5 @@
 # auth/auth_routes.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
@@ -16,25 +16,31 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=user_schema.CreateUser ,status_code=status.HTTP_201_CREATED)
 async def register(user: user_schema.User, db: Session = Depends(get_db)):
-    db_user = user_controller.get_user_by_username(db, user.username)
+    db_user = user_controller.get_user_by_email(db, user.email)
+
     if db_user:
-        raise HTTPException(status_code=400, detail="El nombre de usuario ya existe")
+        raise HTTPException(status_code=400, detail="El email de usuario ya existe")
 
     db_user = await user_controller.create_user(db, user)
-    return {"msg": "Usuario registrado correctamente", "user": user.username}
+
+    return user_schema.CreateUser(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email
+    )
 
 @router.post("/login")
-async def login(user: user_schema.User, db: Session = Depends(get_db)):
-    db_user = user_controller.get_user_by_username(db, user.username)
+async def login(user: user_schema.User, db: Session = Depends(get_db), response = Response):
+    db_user = user_controller.get_user_by_email(db, user.email)
 
     if db_user is None or not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     payload = {
         "sub": db_user.id,
-        "username": db_user.username,
+        "email": db_user.email,
         "role": db_user.role
     }
 
