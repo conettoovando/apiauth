@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from fastapi.exceptions import HTTPException
+from fastapi.responses import Response
 
 load_dotenv()
 
@@ -40,8 +41,13 @@ def verify_token(token: str):
         raise HTTPException(status_code=401, detail="Token expirado")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token invalido")
+    
+def get_public_key():
+    with open(PUBLIC_KEY_PATH, "r") as file:
+        public_key = file.read()
+    return Response(content=public_key, media_type="text/plain")
 
-def get_payload(refresh_token: str):
+def get_payload(refresh_token: str) -> dict:
     key = load_public_key()
     
     payload = jwt.decode(jwt=refresh_token, key=key, algorithms=['RS256'])

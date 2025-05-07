@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from auth.jwt_handler import create_access_token, verify_token, get_payload
-import controllers.user_controller as user_controller, schemas.user_schema as user_schema
+import users.user_controller as user_controller, users.user_schema as user_schema
 import bcrypt
 import jwt
 from datetime import timedelta
@@ -39,7 +39,7 @@ async def login(user: user_schema.User, db: Session = Depends(get_db), response 
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     payload = {
-        "sub": db_user.id,
+        "sub": str(db_user.id),
         "email": db_user.email,
         "role": db_user.role
     }
@@ -55,6 +55,7 @@ async def login(user: user_schema.User, db: Session = Depends(get_db), response 
     )
 
     return {
+        "id": db_user.id,
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
@@ -64,10 +65,9 @@ async def login(user: user_schema.User, db: Session = Depends(get_db), response 
 async def refresh_token(request: user_schema.RefreshToken):
     try:
         payload = get_payload(refresh_token=request.refresh_token)
-        print("payload", payload)
 
         new_access_token = create_access_token(
-            {"sub": payload["sub"], "username": payload["username"]},
+            {"sub": payload["sub"], "username": payload["username"]} if payload.get("username") else {"sub": payload["sub"]},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
 
@@ -80,11 +80,8 @@ async def refresh_token(request: user_schema.RefreshToken):
 
 @router.get("/me")
 async def me(token: str = Depends(oauth2_scheme)):
-    print("Token-------")
-    print(token)
     try:
         user = verify_token(token)
-        print("user", user)
-        return {"msg": "Token válido", "user": user, "token": token}
+        return {"msg": "Token válido", "user": user}
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Token inválido")

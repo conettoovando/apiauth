@@ -1,17 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from auth.jwt_handler import verify_token
+from auth.jwt_handler import get_public_key
 import jwt
 
 router = APIRouter(
     prefix='/auth'
 )
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-@router.get('/public_key')
-async def me(token: str = Depends(oauth2_scheme)):
+@router.get('/public-key')
+async def get_public_keys():
     try:
-        user = verify_token(token)
-        return {"msg": "Token válido", "user": user}
+        response = get_public_key()
+        return response
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
