@@ -1,5 +1,5 @@
 # auth/auth_routes.py
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Response
 from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
@@ -16,7 +16,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-@router.post("/register", response_model=user_schema.CreateUser ,status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: user_schema.User, db: Session = Depends(get_db)):
     db_user = user_controller.get_user_by_email(db, user.email)
 
@@ -25,21 +25,19 @@ async def register(user: user_schema.User, db: Session = Depends(get_db)):
 
     db_user = await user_controller.create_user(db, user)
 
-    return user_schema.CreateUser(
-        id=db_user.id,
-        username=db_user.username,
-        email=db_user.email
-    )
+    return {
+        "success": "Usuario creado correctamente"
+    }
 
 @router.post("/login")
-async def login(user: user_schema.User, db: Session = Depends(get_db), response = Response):
+async def login(user: user_schema.User, db: Session = Depends(get_db), response: Response = Response()):
     db_user = user_controller.get_user_by_email(db, user.email)
 
     if db_user is None or not bcrypt.checkpw(user.password.encode('utf-8'), db_user.password.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     payload = {
-        "sub": str(db_user.id),
+        "id": str(db_user.id),
         "email": db_user.email,
         "role": db_user.role
     }
@@ -54,24 +52,56 @@ async def login(user: user_schema.User, db: Session = Depends(get_db), response 
         expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     )
 
-    return {
-        "id": db_user.id,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=60 * 60 * 24 * 7
+    )
 
-@router.post('/refresh')
-async def refresh_token(request: user_schema.RefreshToken):
-    try:
-        payload = get_payload(refresh_token=request.refresh_token)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="none"
+    )
 
-        new_access_token = create_access_token(
-            {"sub": payload["sub"], "username": payload["username"]} if payload.get("username") else {"sub": payload["sub"]},
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        )
+    response.set_cookie(
+        key="token_type",
+        value="bearer",
+        httponly=False,
+        secure=True,
+        samesite="none"
+    )
 
-        return {"access_token": new_access_token, "token_type": "bearer"}
+    return {"msg": "Acceso consedido con exito"}
+
+@router.post('/refresh', status_code=status.HTTP_204_NO_CONTENT)
+async def refresh_token(request: Request, response: Response = Response()):
+    try :
+        refresh = request.cookies.get("refresh_token")
+        if refresh:
+            payload = get_payload(refresh_token=refresh)
+
+            new_access_token = create_access_token(
+                payload,
+                expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            )
+
+            response.set_cookie(
+                key="access_token",
+                value=new_access_token,
+                httponly=True,
+                secure=True,
+                samesite="none",
+                max_age=60 * 60 * 24 * 7
+            )
+
+            return
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Error en la información")
     
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expirado")
@@ -79,9 +109,32 @@ async def refresh_token(request: user_schema.RefreshToken):
         raise HTTPException(status_code=401, detail="Refresh token invalido")
 
 @router.get("/me")
-async def me(token: str = Depends(oauth2_scheme)):
+async def me(request: Request):
     try:
-        user = verify_token(token)
-        return {"msg": "Token válido", "user": user}
+        #user = verify_token(token)
+        token_ = request.cookies.get("access_token")
+        if token_:
+            user = verify_token(token_)
+        
+            return {"msg": "Token válido", "user": user}
+        
+        return {}
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def cerrar_session(response: Response):
+    cookie_settings = {
+        "httponly": True,
+        "secure": True,
+        "samesite": "none",
+        "path": "/",  # opcional si lo usaste en set_cookie
+    }
+
+    response.delete_cookie("access_token", **cookie_settings)
+    response.delete_cookie("refresh_token", **cookie_settings)
+    
+    # token_type era httponly=False, así que debe ir separado
+    response.delete_cookie("token_type", secure=True, samesite="none", path="/")
+
+    return {"message": "Sesión cerrada"}

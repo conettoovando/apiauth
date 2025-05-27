@@ -34,7 +34,7 @@ def create_access_token(data: dict, expires_delta: timedelta):
 def verify_token(token: str):
     try:
         key = load_public_key()
-        return jwt.decode(token, key=key, algorithms=['RS256'], options={"verify_exp": True})
+        return jwt.decode(token, key, algorithms='RS256', options={"verify_exp": True})
     
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado")
