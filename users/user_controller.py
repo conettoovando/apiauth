@@ -4,7 +4,7 @@ import users.user_model as models
 from sqlalchemy import text
 
 async def create_user(db: Session, user_data: models.User):
-    new_id = db.execute(text("SELECT uuid_generate_v4()")).scalar()
+    new_id = db.execute(text("SELECT gen_random_uuid()")).scalar()
 
     hashed_pw = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt())
     user_data.password = hashed_pw.decode('utf-8')

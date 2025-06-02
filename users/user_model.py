@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 class User(Base):
     __tablename__="users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("gen_random_uuid()"))
     email = Column(String(255), unique=True, index=True, nullable=True)
     username = Column(String(255), index=True)
     password = Column(String(255), nullable=False)
