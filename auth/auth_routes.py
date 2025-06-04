@@ -77,7 +77,9 @@ async def login(user: user_schema.User, db: Session = Depends(get_db), response:
         samesite="none"
     )
 
-    return {"msg": "Acceso consedido con exito"}
+    return {
+        "id": db_user.id
+    }
 
 @router.post('/refresh', status_code=status.HTTP_204_NO_CONTENT)
 async def refresh_token(request: Request, response: Response = Response()):
