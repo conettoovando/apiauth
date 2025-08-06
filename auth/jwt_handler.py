@@ -10,16 +10,22 @@ from fastapi.responses import Response
 
 load_dotenv()
 
-PRIVATE_KEY_PATH = Path(os.getenv("PRIVATE_KEY_PATH"))
-PUBLIC_KEY_PATH = Path(os.getenv("PUBLIC_KEY_PATH"))
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+PUBLIC_KEY = os.getenv("PUBLIC_KEY")
 
 def load_private_key():
-    with open(PRIVATE_KEY_PATH, 'r') as file:
-        return serialization.load_ssh_private_key(file.read().encode(), password=b'')
+    if not PRIVATE_KEY:
+        raise ValueError("PRIVATE_KEY no está definida")
+    
+    private_key = PRIVATE_KEY.replace('\\n', '\n')  # Convertir texto plano a formato real
+    return serialization.load_ssh_private_key(private_key.encode(), password=None)
 
 def load_public_key():
-    with open(PUBLIC_KEY_PATH, 'r') as file:
-        return serialization.load_ssh_public_key(file.read().encode())
+    if not PUBLIC_KEY:
+        raise ValueError("PUBLIC_KEY no está definida")
+
+    public_key = PUBLIC_KEY.replace('\\n', '\n')
+    return serialization.load_ssh_public_key(public_key.encode())
 
 def create_access_token(data: dict, expires_delta: timedelta):
     key = load_private_key()
