@@ -3,7 +3,9 @@ from sqlalchemy import text
 from app.db.session import engine
 from app.core.config import settings
 from app.db.session import Base
+# Import models to ensure they are registered with SQLAlchemy
 from app.models.user import User
+from app.models.token import Token
 
 def reset_if_demo():
     if settings.DEMO_RESET and settings.SQLITE_URL.startswith("sqlite"):
