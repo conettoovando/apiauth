@@ -5,7 +5,6 @@ from jose import JWTError
 from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import User
-from sqlalchemy import select
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -22,6 +21,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
                 detail="User not found",
             )   
         return user
+    
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

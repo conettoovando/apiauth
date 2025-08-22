@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from app.core.security import send_verification_email
 from app.schemas.user import UserCreate, TokenPair
 from app.services.auth import register_user, authenticate_user, issue_tokens, refresh_access_token
 from app.db.session import get_db
@@ -15,6 +16,8 @@ class LoginRequest(BaseModel):
 def register(data: UserCreate, db: Session = Depends(get_db)):
     try:
         user = register_user(db, data)
+
+        send_verification_email(user.email, user.id)
         return {"message": "User registered", "user_id": user.id}
     
     except ValueError as e:
@@ -25,6 +28,9 @@ def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)
     user = authenticate_user(db, payload.email, payload.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    
+    if user.is_verified is False:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User email not verified")
     
     client_ip = request.client.host if request.client is not None else None
     user_agent = request.headers.get("User-Agent", "")
