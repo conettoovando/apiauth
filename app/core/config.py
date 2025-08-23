@@ -15,7 +15,7 @@ class Settings(BaseModel):
     EMAIL_BODY: str = "Please click the link to verify your email."
     EMAIL_SENDER: str = os.getenv("EMAIL_SENDER", "")
     EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
-    EMAIL_SERVER_HOST: str = "http://localhost:8000"
+    EMAIL_SERVER_HOST: str = os.getenv("EMAIL_SERVER_HOST", "http://localhost:8000")
 
 settings = Settings()
 print(settings.model_dump())
